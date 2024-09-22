@@ -1,7 +1,7 @@
 // ship.js
-import { shootBullet, shootSpreadShot, createExplosion, getDistance } from './utils.js';
+import {  createExplosion, getDistance } from './utils.js';
 import { enemies } from './enemies.js'; // Assuming enemies is exported from gameManager
-
+import './constants.js'
 export class Ship {
     constructor(updateWeaponDisplay, updateHealthDisplay, updateKillCount) {
         // Initialize ship properties
@@ -313,6 +313,54 @@ export class Ship {
         ctx.restore();
     }
 }
+
+ function shootBullet(ship, bulletsArray) {
+    // Calculate the ship's forward velocity component
+    const shipSpeedForward = ship.vx * Math.cos(ship.angle) + ship.vy * Math.sin(ship.angle);
+
+    // Bullet speed relative to the ship
+    const bulletSpeed = 10;
+
+    // Total bullet speed
+    const totalBulletSpeed = shipSpeedForward + bulletSpeed;
+
+    bulletsArray.push({
+        x: ship.x,
+        y: ship.y,
+        angle: ship.angle,
+        speed: totalBulletSpeed,
+        vx: Math.cos(ship.angle) * totalBulletSpeed,
+        vy: Math.sin(ship.angle) * totalBulletSpeed,
+        radius: 5,
+        distance: 0,
+        maxDistance: 500
+    });
+}
+
+ function shootSpreadShot(ship, bulletsArray) {
+    // Angles for the spread shot
+    const angles = [ship.angle - 0.1, ship.angle, ship.angle + 0.1];
+ 
+    angles.forEach(angle => {
+        const shipSpeedForward = ship.vx * Math.cos(angle) + ship.vy * Math.sin(angle);
+        const bulletSpeed = 10;
+        const totalBulletSpeed = shipSpeedForward + bulletSpeed;
+
+        bulletsArray.push({
+            x: ship.x,
+            y: ship.y,
+            angle: angle,
+            speed: totalBulletSpeed,
+            vx: Math.cos(angle) * totalBulletSpeed,
+            vy: Math.sin(angle) * totalBulletSpeed,
+            radius: 5,
+            distance: 0,
+            maxDistance: 500
+        });
+    });
+}    
+
+
 
 class Weapon {
     constructor(ship) {
