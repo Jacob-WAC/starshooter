@@ -1,4 +1,6 @@
 // ship.js
+
+
 export class Ship {
     constructor() {
         // Initialize ship properties
