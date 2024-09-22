@@ -5,10 +5,12 @@ body {
     color: white;
     font-family: Arial, sans-serif;
 }
+
 canvas {
     display: block;
     background: #000;
 }
+
 #ui {
     position: absolute;
     top: 10px;
@@ -18,6 +20,7 @@ canvas {
     text-align: right;
     display: none;
 }
+
 #startScreen, #gameOverScreen {
     position: absolute;
     top: 0;
@@ -31,18 +34,22 @@ canvas {
     padding-top: 100px;
     box-sizing: border-box;
 }
+
 #controls {
     margin-top: 20px;
     font-size: 18px;
 }
+
 #startScreen button, #gameOverScreen button {
     margin-top: 30px;
     padding: 10px 20px;
     font-size: 18px;
 }
+
 #gameOverScreen {
     display: none;
 }
+
 #roundDisplay {
     position: absolute;
     top: 10px;
@@ -50,6 +57,7 @@ canvas {
     color: white;
     font-size: 18px;
 }
+
 #countdown {
     position: absolute;
     top: 50%;
@@ -58,6 +66,7 @@ canvas {
     font-size: 48px;
     display: none;
 }
+
 #healthDisplay {
     position: absolute;
     bottom: 10px;
@@ -65,6 +74,7 @@ canvas {
     color: white;
     font-size: 18px;
 }
+
 #skillMenu {
     position: absolute;
     top: 50%;
@@ -79,19 +89,23 @@ canvas {
     display: none;
     text-align: left;
 }
+
 #skillMenu h2 {
     margin-top: 0;
     text-align: center;
 }
+
 #skillMenu label {
     display: block;
     margin-bottom: 10px;
 }
+
 #skillMenu select {
     width: 100%;
     padding: 5px;
     font-size: 16px;
 }
+
 #skillMenu button {
     margin-top: 20px;
     padding: 10px 20px;
