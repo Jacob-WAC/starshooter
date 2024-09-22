@@ -550,7 +550,7 @@ function update() {
             gameState = 'playing';
             roundNumber++;
             initEnemies();
-            console.log(countdownCurrentTime,"|",countdownTimer,"this is after the reset")
+            console.log(countdownCurrentTime,"|",countdownTimer,"this is after the reset",gameState)
         }
         
     }
