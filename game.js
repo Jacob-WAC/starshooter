@@ -532,7 +532,7 @@ function update() {
 
         if (gameState === 'betweenRounds' && countdownCurrentTime > 0 && enemies.length === 0) {
             let now = Date.now();
-            
+            console.log(countdownCurrentTime,"|",countdownTimer,"this is before the reset")
             if (!countdownTimer) {
                 countdownTimer = now;
             }
@@ -542,11 +542,12 @@ function update() {
                 countdownTimer = now;
             }
         } else if (countdownCurrentTime === 0) {
-            console.log(countdownCurrentTime,"|",countdownTimer,"|",now)
+            
             document.getElementById('countdown').style.display = 'none';
             gameState = 'playing';
             roundNumber++;
             initEnemies();
+            console.log(countdownCurrentTime,"|",countdownTimer,"this is after the reset")
         }
         
     }
