@@ -163,6 +163,7 @@ export class Ship {
     activateSkill(skillName, enemies, missiles, aoeEffects, killCount, gameManager) {
         switch (skillName) {
             case 'Missile Attack':
+                console.log("lunch da missle")
                 this.launchMissile(enemies, missiles, killCount, gameManager);
                 break;
             case 'Dash':
