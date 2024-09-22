@@ -6,28 +6,20 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Canvas Element -->
     <canvas id="gameCanvas"></canvas>
-    
-    <!-- UI Elements -->
     <div id="ui">
         Deaths: <span id="deathCount">0</span><br>
         Kills: <span id="killCount">0</span><br>
         Weapon: <span id="weaponName">Basic</span>
     </div>
-    
     <div id="healthDisplay">
         Health: <span id="health">3</span> / <span id="maxHealth">3</span>
     </div>
-    
     <div id="roundDisplay">
         Round: <span id="roundNumber">1</span>
     </div>
-    
     <div id="countdown"></div>
-    
-    <!-- Start Screen -->
-    <div id="startScreen" style="display: block;">
+    <div id="startScreen">
         <h1>Welcome to the Space Game!</h1>
         <div id="controls">
             <p><strong>Controls:</strong></p>
@@ -45,15 +37,11 @@
         </div>
         <p>Press the <strong>Spacebar</strong> to start the game.</p>
     </div>
-    
-    <!-- Game Over Screen -->
     <div id="gameOverScreen">
         <h1>Game Over</h1>
         <p>Your ship was destroyed!</p>
         <p>Press the <strong>Spacebar</strong> to restart immediately.</p>
     </div>
-    
-    <!-- Skill Menu -->
     <div id="skillMenu">
         <h2>Skill Assignment</h2>
         <label>
@@ -70,9 +58,6 @@
         </label>
         <button id="saveSkillsButton">Save Skills</button>
     </div>
-    
-    <!-- Include JavaScript Modules -->
-    <script type="module" src="logger.js"></script>
     <script type="module" src="gameManager.js"></script>
 </body>
 </html>

@@ -1,9 +1,8 @@
 // gameManager.js
 import { Ship } from './ship.js';
-import { Enemy, FastEnemy, TankEnemy } from './enemies.js';
-import { logger } from './logger.js';
-
-/* --- Game Variables and Initialization --- */
+import { Enemy, FastEnemy, TankEnemy, createRandomEnemy, enemies } from './enemies.js';
+import { UI } from './ui.js';
+import { getDistance, pseudoRandom } from './utils.js';
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -22,18 +21,60 @@ const camera = {
 
 const keys = {};
 
-/* --- Instantiate the Ship --- */
+window.addEventListener('keydown', function(e) {
+    keys[e.key.toLowerCase()] = true;
 
-const ship = new Ship();
+    // Start the game on spacebar press
+    if (e.key === ' ' || e.code === 'Space') {
+        if (gameState === 'start') {
+            startGame();
+        } else if (gameState === 'gameover') {
+            restartGame();
+        }
+    }
+
+    // Open Skill Menu with 'T' key
+    if (e.key.toLowerCase() === 't') {
+        ui.toggleSkillMenu(getGameState, setGameState);
+    }
+
+    // Prevent default Tab behavior
+    if (e.key === 'Tab') {
+        e.preventDefault();
+    }
+
+    // Pass input to ship if game is playing
+    if (gameState === 'playing') {
+        ship.handleInput(e.key.toLowerCase(), true, gameState);
+    }
+});
+
+window.addEventListener('keyup', function(e) {
+    keys[e.key.toLowerCase()] = false;
+
+    // Pass input to ship if game is playing
+    if (gameState === 'playing') {
+        ship.handleInput(e.key.toLowerCase(), false, gameState);
+    }
+});
 
 /* --- Game State Management --- */
 
 let gameState = 'start';
-let gameStateBeforeMenu = 'playing';
+
+function getGameState(state = null) {
+    if (state) {
+        gameState = state;
+    }
+    return gameState;
+}
+
+function setGameState(state) {
+    gameState = state;
+}
 
 /* --- Game Entities --- */
 
-let enemies = [];
 const bullets = [];
 const missiles = [];
 const explosions = [];
@@ -42,11 +83,11 @@ const aoeEffects = []; // For visualizing AoE attacks
 /* --- Game Variables --- */
 
 let deathCount = 0;
-let killCountValue = 0;
+let killCount = 0;
 
 let gameOverTimer = null;
 let countdownTimer = null;
-const countdownTime = 5; // Countdown time in seconds
+let countdownTime = 5; // Countdown time in seconds
 let countdownCurrentTime = countdownTime;
 
 const missileExplosionRadius = 100; // Area of Effect radius for missile explosion (editable)
@@ -58,57 +99,212 @@ let roundNumber = 1;
 const availableSkills = ['Missile Attack', 'AoE Attack', 'Shield', 'Dash'];
 let skillAssignments = ['Missile Attack', 'Dash', 'Shield']; // Default assignments
 
+/* --- Instantiate UI --- */
+
+const ui = new UI();
+
+/* --- Instantiate the Ship --- */
+
+const ship = new Ship(
+    (weaponName) => ui.updateUI(deathCount, killCount, weaponName, ship.health, ship.maxHealth, roundNumber),
+    (health, maxHealth) => ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, health, maxHealth, roundNumber),
+    (killCount) => ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber)
+);
+
 /* --- Functions --- */
 
-/**
- * Calculates the distance between two points.
- * @param {number} x1 - X-coordinate of first point.
- * @param {number} y1 - Y-coordinate of first point.
- * @param {number} x2 - X-coordinate of second point.
- * @param {number} y2 - Y-coordinate of second point.
- * @returns {number} Distance between the two points.
- */
-export function getDistance(x1, y1, x2, y2) {
-    let dx = x1 - x2;
-    let dy = y1 - y2;
-    return Math.sqrt(dx * dx + dy * dy);
-}
+function update() {
+    if (gameState === 'playing' || gameState === 'betweenRounds') {
+        ship.update(keys, gameState, bullets, missiles, explosions, aoeEffects, enemies, killCount, camera, gameOver, startBetweenRounds);
 
-/**
- * Creates an explosion effect at the specified coordinates.
- * @param {number} x - X-coordinate of explosion.
- * @param {number} y - Y-coordinate of explosion.
- */
-export function createExplosion(x, y) {
-    try {
-        const particles = [];
-        for (let i = 0; i < 20; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 2 + 1;
-            particles.push({
-                x: x,
-                y: y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                lifetime: 30
-            });
+        // Update bullets
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let bullet = bullets[i];
+            bullet.x += bullet.vx;
+            bullet.y += bullet.vy;
+            bullet.distance += bullet.speed;
+
+            // Remove bullet if it has traveled its max distance
+            if (bullet.distance > bullet.maxDistance) {
+                bullets.splice(i, 1);
+            }
         }
-        explosions.push({
-            particles: particles,
-            lifetime: 30
-        });
-        logger.log(`Explosion created at (${x}, ${y}).`);
-    } catch (err) {
-        logger.error('Error in createExplosion:', err);
-    }
-}
 
-/**
- * Shoots a bullet from the ship.
- * @param {Ship} ship - The ship instance.
- */
-export function shootBullet(ship) {
-    try {
+        // Update missiles
+        for (let i = missiles.length - 1; i >= 0; i--) {
+            let missile = missiles[i];
+            if (missile.target && enemies.includes(missile.target)) {
+                // Adjust missile velocity towards the target
+                const dx = missile.target.x - missile.x;
+                const dy = missile.target.y - missile.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const speed = missile.speed;
+                missile.vx = (dx / dist) * speed;
+                missile.vy = (dy / dist) * speed;
+            } else {
+                // Target is gone
+                missiles.splice(i, 1);
+                continue;
+            }
+
+            // Update missile position
+            missile.x += missile.vx;
+            missile.y += missile.vy;
+
+            // Check collision with target
+            if (getDistance(missile.x, missile.y, missile.target.x, missile.target.y) < missile.radius + missile.target.radius) {
+                // Create explosion at the missile's position
+                createExplosion(missile.x, missile.y);
+
+                // Remove missile
+                missiles.splice(i, 1);
+
+                // Area of Effect damage
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    let enemy = enemies[j];
+                    let distance = getDistance(missile.x, missile.y, enemy.x, enemy.y);
+                    if (distance < missileExplosionRadius) {
+                        // Enemy is within AoE, destroy it
+                        createExplosion(enemy.x, enemy.y);
+                        enemies.splice(j, 1);
+                        killCount++;
+                        ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber);
+                    }
+                }
+
+                // Check for round completion
+                if (enemies.length === 0) {
+                    startBetweenRounds();
+                }
+            }
+        }
+
+        // Update AoE effects
+        for (let i = aoeEffects.length - 1; i >= 0; i--) {
+            let aoe = aoeEffects[i];
+            aoe.radius += 10; // Adjust expansion speed as needed
+            aoe.alpha -= 0.05; // Fade out effect
+            if (aoe.alpha <= 0) {
+                aoeEffects.splice(i, 1);
+            }
+        }
+
+        // Update enemies
+        for (let index = enemies.length - 1; index >= 0; index--) {
+            let enemy = enemies[index];
+
+            // Only move enemies if the game is in 'playing' state
+            if (gameState === 'playing') {
+                enemy.update(ship);
+            }
+
+            // Collision with ship
+            let collisionDist = ship.radius + enemy.radius;
+            if (getDistance(ship.x, ship.y, enemy.x, enemy.y) < collisionDist) {
+                // Ship takes damage
+                ship.takeDamage(1);
+                ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber);
+
+                // Destroy enemy
+                createExplosion(enemy.x, enemy.y);
+                enemies.splice(index, 1);
+                killCount++;
+                ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber);
+
+                // Check if all enemies are defeated
+                if (enemies.length === 0) {
+                    // Start countdown to next round
+                    startBetweenRounds();
+                }
+                continue;
+            }
+
+            // Collision with bullets
+            for (let bIndex = bullets.length - 1; bIndex >= 0; bIndex--) {
+                let bullet = bullets[bIndex];
+                let collisionDist = enemy.radius + bullet.radius;
+                if (getDistance(bullet.x, bullet.y, enemy.x, enemy.y) < collisionDist) {
+                    // Reduce enemy health
+                    enemy.health -= 1;
+                    bullets.splice(bIndex, 1);
+
+                    if (enemy.health <= 0) {
+                        // Enemy dies
+                        createExplosion(enemy.x, enemy.y);
+                        enemies.splice(index, 1);
+                        killCount++;
+                        ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber);
+
+                        // Check if all enemies are defeated
+                        if (enemies.length === 0) {
+                            // Start countdown to next round
+                            startBetweenRounds();
+                        }
+                    }
+                    break; // Exit the bullet loop since bullet is removed
+                }
+            }
+
+            // Collision with other enemies
+            for (let i = 0; i < enemies.length; i++) {
+                if (i !== index) {
+                    let other = enemies[i];
+                    let distance = getDistance(enemy.x, enemy.y, other.x, other.y);
+                    let minDist = enemy.radius + other.radius;
+                    if (distance < minDist) {
+                        // Simple collision response: adjust positions to prevent overlap
+                        let overlap = minDist - distance;
+                        let angle = Math.atan2(enemy.y - other.y, enemy.x - other.x);
+                        enemy.x += Math.cos(angle) * overlap / 2;
+                        enemy.y += Math.sin(angle) * overlap / 2;
+                        other.x -= Math.cos(angle) * overlap / 2;
+                        other.y -= Math.sin(angle) * overlap / 2;
+                    }
+                }
+            }
+        }
+
+        // Update explosions
+        for (let i = explosions.length - 1; i >= 0; i--) {
+            let explosion = explosions[i];
+            explosion.lifetime -= 1;
+            explosion.particles.forEach(particle => {
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+            });
+            if (explosion.lifetime <= 0) {
+                explosions.splice(i, 1);
+            }
+        }
+
+        // Countdown handling
+        if (gameState === 'betweenRounds') {
+            if (countdownCurrentTime > 0) {
+                // Update countdown every second
+                let now = Date.now();
+                if (!countdownTimer) {
+                    countdownTimer = now;
+                }
+                if (now - countdownTimer >= 1000) {
+                    countdownCurrentTime--;
+                    ui.showCountdown(countdownCurrentTime);
+                    countdownTimer = now;
+                }
+            } else {
+                // Start next round
+                ui.hideCountdown();
+                gameState = 'playing';
+                roundNumber++;
+                ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber);
+                initEnemies();
+            }
+        }
+
+        // Update UI
+        ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber);
+    }
+
+    function shootBullet(ship, bulletsArray) {
         // Calculate the ship's forward velocity component
         const shipSpeedForward = ship.vx * Math.cos(ship.angle) + ship.vy * Math.sin(ship.angle);
 
@@ -118,7 +314,7 @@ export function shootBullet(ship) {
         // Total bullet speed
         const totalBulletSpeed = shipSpeedForward + bulletSpeed;
 
-        bullets.push({
+        bulletsArray.push({
             x: ship.x,
             y: ship.y,
             angle: ship.angle,
@@ -129,18 +325,9 @@ export function shootBullet(ship) {
             distance: 0,
             maxDistance: 500
         });
-        logger.log(`Bullet shot at angle ${ship.angle.toFixed(2)} radians.`);
-    } catch (err) {
-        logger.error('Error in shootBullet:', err);
     }
-}
 
-/**
- * Shoots a spread shot from the ship.
- * @param {Ship} ship - The ship instance.
- */
-export function shootSpreadShot(ship) {
-    try {
+    function shootSpreadShot(ship, bulletsArray) {
         // Angles for the spread shot
         const angles = [ship.angle - 0.1, ship.angle, ship.angle + 0.1];
 
@@ -149,7 +336,7 @@ export function shootSpreadShot(ship) {
             const bulletSpeed = 10;
             const totalBulletSpeed = shipSpeedForward + bulletSpeed;
 
-            bullets.push({
+            bulletsArray.push({
                 x: ship.x,
                 y: ship.y,
                 angle: angle,
@@ -160,503 +347,16 @@ export function shootSpreadShot(ship) {
                 distance: 0,
                 maxDistance: 500
             });
-            logger.log(`Spread shot bullet at angle ${angle.toFixed(2)} radians.`);
         });
-    } catch (err) {
-        logger.error('Error in shootSpreadShot:', err);
     }
-}
 
-/**
- * Handles game over state by updating UI and resetting the game after a delay.
- */
-export function gameOver() {
-    try {
-        gameState = 'gameover';
-        deathCount++;
-        const deathCountElement = document.getElementById('deathCount');
-        if (deathCountElement) {
-            deathCountElement.textContent = deathCount;
-            logger.log(`Death count incremented to ${deathCount}.`);
-        } else {
-            logger.warn('deathCount element not found in the DOM.');
-        }
+    /* --- Drawing Functions --- */
 
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        if (gameOverScreen) {
-            gameOverScreen.style.display = 'block';
-            logger.log('Game over screen displayed.');
-        } else {
-            logger.warn('gameOverScreen element not found in the DOM.');
-        }
-
-        gameOverTimer = setTimeout(() => {
-            restartGame();
-        }, 5000); // Wait for 5 seconds before restarting
-        logger.log('Game will restart after 5 seconds.');
-    } catch (err) {
-        logger.error('Error in gameOver:', err);
-    }
-}
-
-/**
- * Initiates the countdown between rounds.
- */
-export function startBetweenRounds() {
-    try {
-        gameState = 'betweenRounds';
-        countdownCurrentTime = countdownTime;
-        const countdownElement = document.getElementById('countdown');
-        if (countdownElement) {
-            countdownElement.style.display = 'block';
-            countdownElement.textContent = countdownCurrentTime;
-            logger.log('Between rounds started. Countdown initiated.');
-        } else {
-            logger.warn('countdown element not found in the DOM.');
-        }
-        countdownTimer = null;
-    } catch (err) {
-        logger.error('Error in startBetweenRounds:', err);
-    }
-}
-
-/**
- * Restarts the game by reinitializing game elements.
- */
-function restartGame() {
-    try {
-        if (gameOverTimer) {
-            clearTimeout(gameOverTimer);
-            gameOverTimer = null;
-            logger.log('Cleared game over timer.');
-        }
-
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        if (gameOverScreen) {
-            gameOverScreen.style.display = 'none';
-            logger.log('Game over screen hidden.');
-        } else {
-            logger.warn('gameOverScreen element not found in the DOM.');
-        }
-
-        gameState = 'playing';
-        initGame();
-        logger.log('Game restarted.');
-    } catch (err) {
-        logger.error('Error in restartGame:', err);
-    }
-}
-
-/**
- * Toggles the skill menu display.
- */
-function toggleSkillMenu() {
-    try {
-        const skillMenu = document.getElementById('skillMenu');
-        if (skillMenu.style.display === 'none' || skillMenu.style.display === '') {
-            openSkillMenu();
-        } else {
-            closeSkillMenu();
-        }
-    } catch (err) {
-        logger.error('Error in toggleSkillMenu:', err);
-    }
-}
-
-/**
- * Opens the skill menu and pauses the game.
- */
-function openSkillMenu() {
-    try {
-        gameStateBeforeMenu = gameState;
-        gameState = 'paused';
-        const skillMenu = document.getElementById('skillMenu');
-        if (skillMenu) {
-            skillMenu.style.display = 'block';
-            logger.log('Skill menu opened.');
-        } else {
-            logger.warn('skillMenu element not found in the DOM.');
-        }
-        populateSkillMenu();
-    } catch (err) {
-        logger.error('Error in openSkillMenu:', err);
-    }
-}
-
-/**
- * Closes the skill menu and resumes the game.
- */
-function closeSkillMenu() {
-    try {
-        const skillMenu = document.getElementById('skillMenu');
-        if (skillMenu) {
-            skillMenu.style.display = 'none';
-            logger.log('Skill menu closed.');
-        } else {
-            logger.warn('skillMenu element not found in the DOM.');
-        }
-        gameState = gameStateBeforeMenu;
-    } catch (err) {
-        logger.error('Error in closeSkillMenu:', err);
-    }
-}
-
-/**
- * Populates the skill menu with available skills.
- */
-function populateSkillMenu() {
-    try {
-        const slot1 = document.getElementById('skillSlot1');
-        const slot2 = document.getElementById('skillSlot2');
-        const slot3 = document.getElementById('skillSlot3');
-
-        [slot1, slot2, slot3].forEach((slot, index) => {
-            if (!slot) {
-                logger.warn(`skillSlot${index + 1} element not found in the DOM.`);
-                return;
-            }
-            slot.innerHTML = '';
-            availableSkills.forEach(skill => {
-                const option = document.createElement('option');
-                option.value = skill;
-                option.textContent = skill;
-                if (skillAssignments[index] === skill) {
-                    option.selected = true;
-                }
-                slot.appendChild(option);
-            });
-        });
-        logger.log('Skill menu populated.');
-    } catch (err) {
-        logger.error('Error in populateSkillMenu:', err);
-    }
-}
-
-/**
- * Handles the "Save Skills" button click event.
- */
-document.getElementById('saveSkillsButton').addEventListener('click', () => {
-    try {
-        const slot1 = document.getElementById('skillSlot1').value;
-        const slot2 = document.getElementById('skillSlot2').value;
-        const slot3 = document.getElementById('skillSlot3').value;
-
-        // Ensure no duplicate skills
-        const selectedSkills = [slot1, slot2, slot3];
-        const uniqueSkills = new Set(selectedSkills);
-        if (uniqueSkills.size < selectedSkills.length) {
-            alert('Please select different skills for each slot.');
-            logger.warn('Duplicate skills selected in skill menu.');
-            return;
-        }
-
-        skillAssignments = selectedSkills;
-        logger.log('Skill assignments updated:', skillAssignments);
-        closeSkillMenu();
-    } catch (err) {
-        logger.error('Error in saveSkillsButton click handler:', err);
-    }
-});
-
-/**
- * Initializes enemies based on the current round.
- */
-function initEnemies() {
-    try {
-        enemies = [];
-        const numEnemies = 5 + (roundNumber - 1) * 2; // Increase enemies each round
-        for (let i = 0; i < numEnemies; i++) {
-            const enemy = createRandomEnemy();
-            if (enemy) enemies.push(enemy);
-        }
-        const roundNumberElement = document.getElementById('roundNumber');
-        if (roundNumberElement) {
-            roundNumberElement.textContent = roundNumber;
-            logger.log(`Initialized ${numEnemies} enemies for round ${roundNumber}.`);
-        } else {
-            logger.warn('roundNumber element not found in the DOM.');
-        }
-    } catch (err) {
-        logger.error('Error in initEnemies:', err);
-    }
-}
-
-/**
- * Creates a random enemy ensuring it spawns at a valid distance from the ship.
- * @returns {Enemy|null} A new enemy instance or null if creation fails.
- */
-function createRandomEnemy() {
-    try {
-        let x, y;
-        const minDistance = 500; // Minimum distance from the ship
-        let attempts = 0;
-        do {
-            x = ship.x + (Math.random() - 0.5) * 2000;
-            y = ship.y + (Math.random() - 0.5) * 2000;
-            attempts++;
-            if (attempts > 100) {
-                logger.warn('Failed to place enemy at a valid distance after 100 attempts.');
-                break;
-            }
-        } while (getDistance(ship.x, ship.y, x, y) < minDistance);
-
-        // Randomly select an enemy type
-        const enemyTypes = [Enemy, FastEnemy, TankEnemy];
-        const EnemyClass = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-        const enemy = new EnemyClass(x, y, ship.maxSpeed);
-        return enemy;
-    } catch (err) {
-        logger.error('Error in createRandomEnemy:', err);
-        return null;
-    }
-}
-
-/**
- * Updates the game state, entities, and handles collisions.
- */
-function update() {
-   
-        if (gameState === 'playing' || gameState === 'betweenRounds') {
-            ship.update(keys, gameState, skillAssignments, enemies, bullets, missiles, aoeEffects, killCountValue, gameManager);
-
-            // Update bullets
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                let bullet = bullets[i];
-                bullet.x += bullet.vx;
-                bullet.y += bullet.vy;
-                bullet.distance += bullet.speed;
-
-                // Remove bullet if it has traveled its max distance
-                if (bullet.distance > bullet.maxDistance) {
-                    bullets.splice(i, 1);
-                    logger.log('Bullet removed after exceeding max distance.');
-                }
-            }
-
-            // Update missiles
-            for (let i = missiles.length - 1; i >= 0; i--) {
-                let missile = missiles[i];
-                if (missile.target && enemies.includes(missile.target)) {
-                    // Adjust missile velocity towards the target
-                    const dx = missile.target.x - missile.x;
-                    const dy = missile.target.y - missile.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    const speed = missile.speed;
-                    if (dist === 0) {
-                        logger.warn('Missile target is exactly at missile position.');
-                        missiles.splice(i, 1);
-                        continue;
-                    }
-                    missile.vx = (dx / dist) * speed;
-                    missile.vy = (dy / dist) * speed;
-                } else {
-                    // Target is gone
-                    missiles.splice(i, 1);
-                    logger.log('Missile removed because target is no longer present.');
-                    continue;
-                }
-
-                // Update missile position
-                missile.x += missile.vx;
-                missile.y += missile.vy;
-
-                // Check collision with target
-                if (getDistance(missile.x, missile.y, missile.target.x, missile.target.y) < missile.radius + missile.target.radius) {
-                    // Create explosion at the missile's position
-                    createExplosion(missile.x, missile.y);
-                    logger.log(`Missile collided with target at (${missile.target.x}, ${missile.target.y}).`);
-
-                    // Remove missile
-                    missiles.splice(i, 1);
-
-                    // Area of Effect damage
-                    for (let j = enemies.length - 1; j >= 0; j--) {
-                        let enemy = enemies[j];
-                        let distance = getDistance(missile.x, missile.y, enemy.x, enemy.y);
-                        if (distance < missileExplosionRadius) {
-                            // Enemy is within AoE, destroy it
-                            createExplosion(enemy.x, enemy.y);
-                            enemies.splice(j, 1);
-                            killCountValue++;
-                            const killCountElement = document.getElementById('killCount');
-                            if (killCountElement) {
-                                killCountElement.textContent = killCountValue;
-                            }
-                            logger.log(`Enemy at (${enemy.x}, ${enemy.y}) destroyed by missile AoE.`);
-                        }
-                    }
-
-                    // Check for round completion
-                    if (enemies.length === 0) {
-                        startBetweenRounds();
-                        logger.log('All enemies defeated after missile collision. Starting between rounds.');
-                    }
-                }
-            }
-
-            // Update AoE effects
-            for (let i = aoeEffects.length - 1; i >= 0; i--) {
-                let aoe = aoeEffects[i];
-                aoe.radius += 10; // Adjust expansion speed as needed
-                aoe.alpha -= 0.05; // Fade out effect
-                if (aoe.alpha <= 0) {
-                    aoeEffects.splice(i, 1);
-                    logger.log('AoE effect faded out and removed.');
-                }
-            }
-
-            // Update enemies
-            for (let index = enemies.length - 1; index >= 0; index--) {
-                let enemy = enemies[index];
-
-                // Only move enemies if the game is in 'playing' state
-                if (gameState === 'playing') {
-                    enemy.update(ship);
-                }
-
-                // Collision with ship
-                let collisionDist = ship.radius + enemy.radius;
-                if (getDistance(ship.x, ship.y, enemy.x, enemy.y) < collisionDist) {
-                    // Ship takes damage
-                    ship.takeDamage(1);
-                    logger.log(`Ship collided with enemy at (${enemy.x}, ${enemy.y}).`);
-
-                    // Destroy enemy
-                    createExplosion(enemy.x, enemy.y);
-                    enemies.splice(index, 1);
-                    killCountValue++;
-                    const killCountElement = document.getElementById('killCount');
-                    if (killCountElement) {
-                        killCountElement.textContent = killCountValue;
-                    }
-                    logger.log(`Enemy at (${enemy.x}, ${enemy.y}) destroyed by collision.`);
-
-                    // Check if ship is destroyed
-                    if (ship.health <= 0) {
-                        gameOver();
-                        logger.log('Ship health depleted. Game over.');
-                        continue;
-                    }
-
-                    // Check if all enemies are defeated
-                    if (enemies.length === 0) {
-                        startBetweenRounds();
-                        logger.log('All enemies defeated after collision. Starting between rounds.');
-                    }
-                    continue;
-                }
-
-                // Collision with bullets
-                for (let bIndex = bullets.length - 1; bIndex >= 0; bIndex--) {
-                    let bullet = bullets[bIndex];
-                    let collisionDist = enemy.radius + bullet.radius;
-                    if (getDistance(bullet.x, bullet.y, enemy.x, enemy.y) < collisionDist) {
-                        // Reduce enemy health
-                        enemy.health -= 1;
-                        bullets.splice(bIndex, 1);
-                        logger.log(`Enemy at (${enemy.x}, ${enemy.y}) hit by bullet. Remaining health: ${enemy.health}`);
-
-                        if (enemy.health <= 0) {
-                            // Enemy dies
-                            createExplosion(enemy.x, enemy.y);
-                            enemies.splice(index, 1);
-                            killCountValue++;
-                            const killCountElement = document.getElementById('killCount');
-                            if (killCountElement) {
-                                killCountElement.textContent = killCountValue;
-                            }
-                            logger.log(`Enemy at (${enemy.x}, ${enemy.y}) destroyed by bullet.`);
-
-                            // Check if all enemies are defeated
-                            if (enemies.length === 0) {
-                                startBetweenRounds();
-                                logger.log('All enemies defeated after bullet hits. Starting between rounds.');
-                            }
-                        }
-                        break; // Exit the bullet loop since bullet is removed
-                    }
-                }
-
-                // Collision with other enemies
-                for (let i = 0; i < enemies.length; i++) {
-                    if (i !== index) {
-                        let other = enemies[i];
-                        let distance = getDistance(enemy.x, enemy.y, other.x, other.y);
-                        let minDist = enemy.radius + other.radius;
-                        if (distance < minDist) {
-                            // Simple collision response: adjust positions to prevent overlap
-                            let overlap = minDist - distance;
-                            let angle = Math.atan2(enemy.y - other.y, enemy.x - other.x);
-                            enemy.x += Math.cos(angle) * overlap / 2;
-                            enemy.y += Math.sin(angle) * overlap / 2;
-                            other.x -= Math.cos(angle) * overlap / 2;
-                            other.y -= Math.sin(angle) * overlap / 2;
-                            logger.log(`Enemies at (${enemy.x}, ${enemy.y}) and (${other.x}, ${other.y}) collided and adjusted positions.`);
-                        }
-                    }
-                }
-            }
-
-            // Update explosions
-            for (let i = explosions.length - 1; i >= 0; i--) {
-                let explosion = explosions[i];
-                explosion.lifetime -= 1;
-                explosion.particles.forEach(particle => {
-                    particle.x += particle.vx;
-                    particle.y += particle.vy;
-                });
-                if (explosion.lifetime <= 0) {
-                    explosions.splice(i, 1);
-                    logger.log('Explosion removed after lifetime.');
-                }
-            }
-
-            // Countdown handling
-            if (gameState === 'betweenRounds') {
-                if (countdownCurrentTime > 0) {
-                    // Update countdown every second
-                    let now = Date.now();
-                    if (!countdownTimer) {
-                        countdownTimer = now;
-                    }
-                    if (now - countdownTimer >= 1000) {
-                        countdownCurrentTime--;
-                        const countdownElement = document.getElementById('countdown');
-                        if (countdownElement) {
-                            countdownElement.textContent = countdownCurrentTime;
-                            logger.log(`Countdown: ${countdownCurrentTime} seconds remaining.`);
-                        } else {
-                            logger.warn('countdown element not found in the DOM.');
-                        }
-                        countdownTimer = now;
-                    }
-                } else {
-                    // Start next round
-                    const countdownElement = document.getElementById('countdown');
-                    if (countdownElement) {
-                        countdownElement.style.display = 'none';
-                        logger.log('Countdown completed. Starting next round.');
-                    }
-                    gameState = 'playing';
-                    roundNumber++;
-                    initEnemies();
-                }
-            }
-       
-    }}
-
-/* --- Drawing Functions --- */
-
-function drawPlayer() {
-    try {
+    function drawPlayer() {
         ship.draw(ctx, camera);
-    } catch (err) {
-        logger.error('Error in drawPlayer:', err);
     }
-}
 
-function drawBullets() {
-    try {
+    function drawBullets() {
         bullets.forEach(bullet => {
             ctx.save();
             ctx.translate(bullet.x - camera.x, bullet.y - camera.y);
@@ -668,23 +368,15 @@ function drawBullets() {
 
             ctx.restore();
         });
-    } catch (err) {
-        logger.error('Error in drawBullets:', err);
     }
-}
 
-function drawEnemiesFunc() {
-    try {
+    function drawEnemies() {
         enemies.forEach(enemy => {
             enemy.draw(ctx, camera);
         });
-    } catch (err) {
-        logger.error('Error in drawEnemiesFunc:', err);
     }
-}
 
-function drawMissiles() {
-    try {
+    function drawMissiles() {
         missiles.forEach(missile => {
             ctx.save();
             ctx.translate(missile.x - camera.x, missile.y - camera.y);
@@ -707,13 +399,9 @@ function drawMissiles() {
 
             ctx.restore();
         });
-    } catch (err) {
-        logger.error('Error in drawMissiles:', err);
     }
-}
 
-function drawExplosions() {
-    try {
+    function drawExplosions() {
         explosions.forEach(explosion => {
             explosion.particles.forEach(particle => {
                 ctx.save();
@@ -725,13 +413,9 @@ function drawExplosions() {
                 ctx.restore();
             });
         });
-    } catch (err) {
-        logger.error('Error in drawExplosions:', err);
     }
-}
 
-function drawAoEEffectsFunc() {
-    try {
+    function drawAoEEffects() {
         aoeEffects.forEach(aoe => {
             ctx.save();
             ctx.translate(aoe.x - camera.x, aoe.y - camera.y);
@@ -742,13 +426,9 @@ function drawAoEEffectsFunc() {
             ctx.stroke();
             ctx.restore();
         });
-    } catch (err) {
-        logger.error('Error in drawAoEEffectsFunc:', err);
     }
-}
 
-function drawBackground() {
-    try {
+    function drawBackground() {
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -778,22 +458,9 @@ function drawBackground() {
 
         // Draw planets, asteroids, and nebulas
         drawCelestialObjects();
-    } catch (err) {
-        logger.error('Error in drawBackground:', err);
     }
-}
 
-function pseudoRandom(x, y) {
-    // Use a hash function to generate a pseudo-random number based on x and y
-    x = x | 0; // Ensure x is an integer
-    y = y | 0; // Ensure y is an integer
-    let seed = x * 374761393 + y * 668265263; // Large primes
-    seed = (seed ^ (seed >> 13)) * 1274126177;
-    return ((seed & 0x7fffffff) % 1000) / 1000;
-}
-
-function drawCelestialObjects() {
-    try {
+    function drawCelestialObjects() {
         const cellSize = 1000; // Larger cells for less frequent objects
         const startX = camera.x - canvas.width / 2;
         const startY = camera.y - canvas.height / 2;
@@ -823,13 +490,9 @@ function drawCelestialObjects() {
                 }
             }
         }
-    } catch (err) {
-        logger.error('Error in drawCelestialObjects:', err);
     }
-}
 
-function drawPlanet(x, y, rand) {
-    try {
+    function drawPlanet(x, y, rand) {
         const radius = 50 + rand * 50;
         ctx.save();
         ctx.translate(x, y);
@@ -838,13 +501,9 @@ function drawPlanet(x, y, rand) {
         ctx.arc(0, 0, radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-    } catch (err) {
-        logger.error('Error in drawPlanet:', err);
     }
-}
 
-function drawAsteroid(x, y, rand) {
-    try {
+    function drawAsteroid(x, y, rand) {
         const size = 20 + rand * 30;
         ctx.save();
         ctx.translate(x, y);
@@ -858,13 +517,9 @@ function drawAsteroid(x, y, rand) {
         ctx.closePath();
         ctx.fill();
         ctx.restore();
-    } catch (err) {
-        logger.error('Error in drawAsteroid:', err);
     }
-}
 
-function drawNebula(x, y, rand) {
-    try {
+    function drawNebula(x, y, rand) {
         const size = 200 + rand * 200;
         ctx.save();
         ctx.translate(x, y);
@@ -876,13 +531,9 @@ function drawNebula(x, y, rand) {
         ctx.arc(0, 0, size, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-    } catch (err) {
-        logger.error('Error in drawNebula:', err);
     }
-}
 
-function render() {
-    try {
+    function render() {
         if (gameState === 'playing' || gameState === 'betweenRounds') {
             camera.x = ship.x - canvas.width / 2;
             camera.y = ship.y - canvas.height / 2;
@@ -890,9 +541,9 @@ function render() {
             drawPlayer();
             drawBullets();
             drawMissiles(); // Draw missiles
-            drawEnemiesFunc();
+            drawEnemies();
             drawExplosions();
-            drawAoEEffectsFunc();
+            drawAoEEffects();
         } else if (gameState === 'start' || gameState === 'gameover') {
             // Draw background stars on the start and game over screens
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -900,32 +551,118 @@ function render() {
             camera.y = 0;
             drawBackground();
         }
-    } catch (err) {
-        logger.error('Error in render:', err);
     }
-}
 
-/* --- Game Loop --- */
+    /* --- Utility Functions --- */
 
-function gameLoop() {
-    try {
+    function createExplosion(x, y) {
+        const particles = [];
+        for (let i = 0; i < 20; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 2 + 1;
+            particles.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                lifetime: 30
+            });
+        }
+        explosions.push({
+            particles: particles,
+            lifetime: 30
+        });
+    }
+
+    /* --- Game State Functions --- */
+
+    function startGame() {
+        ui.hideStartScreen();
+        ui.showUI();
+        gameState = 'playing';
+        initGame();
+    }
+
+    function initGame() {
+        // Reset ship position and velocity
+        ship.x = 0;
+        ship.y = 0;
+        ship.vx = 0;
+        ship.vy = 0;
+        ship.angle = 0;
+        ship.thrusterIntensity = 0; // Reset thruster intensity
+        ship.health = ship.maxHealth; // Reset health
+        ship.shieldActive = false;
+        ship.shieldCooldown = 0;
+        ship.dashCooldown = 0;
+        ship.aoeCooldown = 0;
+
+        // Reset round and kills
+        roundNumber = 1;
+        killCount = 0;
+        deathCount = 0;
+        ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber);
+
+        // Clear bullets, missiles, explosions, and AoE effects
+        bullets.length = 0;
+        missiles.length = 0;
+        explosions.length = 0;
+        aoeEffects.length = 0;
+
+        // Initialize enemies
+        initEnemies();
+    }
+
+    function initEnemies() {
+        enemies = [];
+        const numEnemies = 5 + (roundNumber - 1) * 2; // Increase enemies each round
+        for (let i = 0; i < numEnemies; i++) {
+            enemies.push(createRandomEnemy(ship));
+        }
+        ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber);
+    }
+
+    function startBetweenRounds() {
+        gameState = 'betweenRounds';
+        countdownCurrentTime = countdownTime;
+        ui.showCountdown(countdownCurrentTime);
+        countdownTimer = null;
+    }
+
+    function gameOver() {
+        gameState = 'gameover';
+        deathCount++;
+        ui.updateUI(deathCount, killCount, ship.weapons[ship.currentWeaponIndex].name, ship.health, ship.maxHealth, roundNumber);
+        ui.showGameOverScreen();
+        gameOverTimer = setTimeout(() => {
+            restartGame();
+        }, 5000); // Wait for 5 seconds before restarting
+    }
+
+    function restartGame() {
+        if (gameOverTimer) {
+            clearTimeout(gameOverTimer);
+            gameOverTimer = null;
+        }
+        ui.hideGameOverScreen();
+        gameState = 'playing';
+        initGame();
+    }
+
+    /* --- Game Loop --- */
+
+    function gameLoop() {
         if (gameState !== 'paused') {
             update();
             render();
         }
         requestAnimationFrame(gameLoop);
-    } catch (err) {
-        logger.error('Error in gameLoop:', err);
     }
-}
 
-// Initialize skill menu display
-const skillMenu = document.getElementById('skillMenu');
-if (skillMenu) {
-    skillMenu.style.display = 'none';
-} else {
-    logger.warn('skillMenu element not found in the DOM.');
-}
+    // Initialize skill menu display
+    ui.skillMenu.style.display = 'none';
+    ui.startScreen.style.display = 'block';
 
-// Start the game loop
-gameLoop();
+    // Start the game loop
+    gameLoop();
+}

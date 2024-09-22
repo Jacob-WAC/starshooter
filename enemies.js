@@ -1,12 +1,14 @@
 // enemies.js
-import { gameOver, killCount, gameManager } from './gameManager.js';
+import { getDistance, createExplosion } from './utils.js';
+
+export let enemies = [];
 
 export class Enemy {
-    constructor(x, y, shipMaxSpeed) {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
         this.radius = 10;
-        this.speed = shipMaxSpeed * 0.75;
+        this.speed = ship.maxSpeed * 0.75;
         this.health = 1;
         this.type = 'Basic'; // Type identifier
     }
@@ -37,9 +39,9 @@ export class Enemy {
 
 // Fast enemy type
 export class FastEnemy extends Enemy {
-    constructor(x, y, shipMaxSpeed) {
-        super(x, y, shipMaxSpeed);
-        this.speed = shipMaxSpeed * 1.2; // Faster than the ship
+    constructor(x, y) {
+        super(x, y);
+        this.speed = ship.maxSpeed * 1.2; // Faster than the ship
         this.radius = 8;
         this.type = 'Fast';
     }
@@ -57,9 +59,9 @@ export class FastEnemy extends Enemy {
 
 // Tank enemy type
 export class TankEnemy extends Enemy {
-    constructor(x, y, shipMaxSpeed) {
-        super(x, y, shipMaxSpeed);
-        this.speed = shipMaxSpeed * 0.5; // Slower than the ship
+    constructor(x, y) {
+        super(x, y);
+        this.speed = ship.maxSpeed * 0.5; // Slower than the ship
         this.radius = 15;
         this.health = 3; // Takes more hits
         this.type = 'Tank';
@@ -74,4 +76,18 @@ export class TankEnemy extends Enemy {
         ctx.fill();
         ctx.restore();
     }
+}
+
+export function createRandomEnemy(ship) {
+    let x, y;
+    const minDistance = 500; // Minimum distance from the ship
+    do {
+        x = ship.x + (Math.random() - 0.5) * 2000;
+        y = ship.y + (Math.random() - 0.5) * 2000;
+    } while (getDistance(ship.x, ship.y, x, y) < minDistance);
+
+    // Randomly select an enemy type
+    const enemyTypes = [Enemy, FastEnemy, TankEnemy];
+    const EnemyClass = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+    return new EnemyClass(x, y);
 }

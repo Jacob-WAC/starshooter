@@ -1,137 +1,97 @@
-/* Reset default margins and paddings */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 body {
+    margin: 0;
     overflow: hidden;
     background: #000;
     color: white;
     font-family: Arial, sans-serif;
-    position: relative; /* Establishes a new positioning context */
-    height: 100vh; /* Ensures the body takes full viewport height */
 }
-
-/* Canvas Styling */
 canvas {
-    position: fixed; /* Fixes the canvas relative to the viewport */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1; /* Lower z-index to place it below UI */
+    display: block;
     background: #000;
 }
-
-/* UI Elements Styling */
-#ui, 
-#healthDisplay, 
-#roundDisplay, 
-#countdown, 
-#skillMenu, 
-#startScreen, 
-#gameOverScreen {
-    position: absolute; /* Positions them relative to the nearest positioned ancestor (body) */
-    z-index: 10; /* Higher z-index to ensure they appear above the canvas */
-    color: white;
-    font-size: 18px;
-}
-
-/* Specific UI Elements */
 #ui {
+    position: absolute;
     top: 10px;
     right: 10px;
+    color: white;
+    font-size: 18px;
     text-align: right;
-    display: none; /* Initially hidden; shown when the game starts */
+    display: none;
 }
-
-#healthDisplay {
-    bottom: 10px;
-    left: 10px;
-}
-
-#roundDisplay {
-    top: 10px;
-    left: 10px;
-}
-
-#countdown {
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 48px;
-    display: none; /* Initially hidden */
-}
-
-
-#startScreen {
+#startScreen, #gameOverScreen {
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.8);
+    color: white;
     font-size: 24px;
     text-align: center;
     padding-top: 100px;
-    display: block; /* Initially hidden; shown based on game state */
+    box-sizing: border-box;
 }
-
-#gameOverScreen {
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    font-size: 24px;
-    text-align: center;
-    padding-top: 100px;
-    display: none; /* Initially hidden; shown based on game state */
-}
-
 #controls {
     margin-top: 20px;
     font-size: 18px;
 }
-
-#startScreen button, 
-#gameOverScreen button {
+#startScreen button, #gameOverScreen button {
     margin-top: 30px;
     padding: 10px 20px;
     font-size: 18px;
 }
-
 #gameOverScreen {
     display: none;
 }
-
+#roundDisplay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-size: 18px;
+}
+#countdown {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    display: none;
+}
+#healthDisplay {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    color: white;
+    font-size: 18px;
+}
 #skillMenu {
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 400px;
     background: rgba(0, 0, 0, 0.9);
     padding: 20px;
+    box-sizing: border-box;
+    color: white;
+    font-size: 18px;
+    display: none;
     text-align: left;
 }
-
 #skillMenu h2 {
     margin-top: 0;
     text-align: center;
 }
-
 #skillMenu label {
     display: block;
     margin-bottom: 10px;
 }
-
 #skillMenu select {
     width: 100%;
     padding: 5px;
     font-size: 16px;
 }
-
 #skillMenu button {
     margin-top: 20px;
     padding: 10px 20px;
