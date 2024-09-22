@@ -542,12 +542,13 @@ function update() {
                 countdownTimer = now;
             }
         } else if (countdownCurrentTime === 0) {
+            console.log(countdownCurrentTime,"|",countdownTimer,"|",now)
             document.getElementById('countdown').style.display = 'none';
             gameState = 'playing';
             roundNumber++;
             initEnemies();
         }
-        console.log(countdownCurrentTime,"|",countdownTimer,"|")
+        
     }
 }
 
