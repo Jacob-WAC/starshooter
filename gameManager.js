@@ -2,7 +2,7 @@
 import { Ship } from './ship.js';
 import { Enemy, FastEnemy, TankEnemy, createRandomEnemy, enemies } from './enemies.js';
 import { UI } from './ui.js';
-import { getDistance, pseudoRandom } from './utils.js';
+import { getDistance, pseudoRandom,createExplosion } from './utils.js';
 import './constants.js';
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
