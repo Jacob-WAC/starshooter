@@ -1,6 +1,6 @@
 // ship.js
 import { shootBullet, shootSpreadShot, createExplosion, getDistance } from './utils.js';
-import { enemies } from './gameManager.js'; // Assuming enemies is exported from gameManager
+import { enemies } from './enemies.js'; // Assuming enemies is exported from gameManager
 
 export class Ship {
     constructor(updateWeaponDisplay, updateHealthDisplay, updateKillCount) {
