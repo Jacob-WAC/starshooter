@@ -544,7 +544,7 @@ function update() {
                 document.getElementById('countdown').textContent = countdownCurrentTime;
                 countdownTimer = now;
             }
-        } else if (countdownCurrentTime === 0) {
+        } else if (countdownCurrentTime === 0 && gameState === 'betweenRounds') {
             countdownCurrentTime = null
             document.getElementById('countdown').style.display = 'none';
             gameState = 'playing';
