@@ -1,7 +1,7 @@
 // Game Variables and Initialization
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-
+const missileExplosionRadius = 100;
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -886,7 +886,7 @@ function initGame() {
     missiles.length = 0;
     explosions.length = 0;
     aoeEffects.length = 0;
-    missileExplosionRadius = 100;
+    
     initEnemies();
 }
 
