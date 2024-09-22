@@ -1,5 +1,5 @@
 // enemies.js
-import { getDistance, createExplosion } from './utils.js';
+import { getDistance } from './utils.js';
 import './constants.js';
 
 export let enemies = [];
