@@ -532,6 +532,7 @@ function update() {
 
         if (gameState === 'betweenRounds' && countdownCurrentTime > 0 && enemies.length === 0) {
             let now = Date.now();
+            
             if (!countdownTimer) {
                 countdownTimer = now;
             }
@@ -546,6 +547,7 @@ function update() {
             roundNumber++;
             initEnemies();
         }
+        console.log(countdownCurrentTime,"|",countdownTimer,"|")
     }
 }
 
