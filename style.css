@@ -1,0 +1,127 @@
+/* Reset default margins and paddings */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    background: #000;
+    color: white;
+    font-family: Arial, sans-serif;
+    position: relative; /* Establishes a new positioning context */
+    height: 100vh; /* Ensures the body takes full viewport height */
+}
+
+/* Canvas Styling */
+canvas {
+    position: fixed; /* Fixes the canvas relative to the viewport */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Lower z-index to place it below UI */
+    background: #000;
+}
+
+/* UI Elements Styling */
+#ui, 
+#healthDisplay, 
+#roundDisplay, 
+#countdown, 
+#skillMenu, 
+#startScreen, 
+#gameOverScreen {
+    position: absolute; /* Positions them relative to the nearest positioned ancestor (body) */
+    z-index: 10; /* Higher z-index to ensure they appear above the canvas */
+    color: white;
+    font-size: 18px;
+}
+
+/* Specific UI Elements */
+#ui {
+    top: 10px;
+    right: 10px;
+    text-align: right;
+    display: none; /* Initially hidden; shown when the game starts */
+}
+
+#healthDisplay {
+    bottom: 10px;
+    left: 10px;
+}
+
+#roundDisplay {
+    top: 10px;
+    left: 10px;
+}
+
+#countdown {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    display: none; /* Initially hidden */
+}
+
+#startScreen, #gameOverScreen {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    font-size: 24px;
+    text-align: center;
+    padding-top: 100px;
+    display: none; /* Initially hidden; shown based on game state */
+}
+
+#controls {
+    margin-top: 20px;
+    font-size: 18px;
+}
+
+#startScreen button, 
+#gameOverScreen button {
+    margin-top: 30px;
+    padding: 10px 20px;
+    font-size: 18px;
+}
+
+#gameOverScreen {
+    display: none;
+}
+
+#skillMenu {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 20px;
+    text-align: left;
+}
+
+#skillMenu h2 {
+    margin-top: 0;
+    text-align: center;
+}
+
+#skillMenu label {
+    display: block;
+    margin-bottom: 10px;
+}
+
+#skillMenu select {
+    width: 100%;
+    padding: 5px;
+    font-size: 16px;
+}
+
+#skillMenu button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 18px;
+    width: 100%;
+}
