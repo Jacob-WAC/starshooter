@@ -236,7 +236,7 @@ export class Ship {
         document.getElementById('weaponName').textContent = this.weapons[this.currentWeaponIndex].name;
     }
 
-    launchMissile(enemies, missiles, killCount, gameManager) {
+    launchMissile(enemies, missiles, killCount, gameManager,gameState) {
         if (gameState !== 'playing' && gameState !== 'betweenRounds') return;
         if (missiles.length > 0) return; // Only one missile at a time
 
