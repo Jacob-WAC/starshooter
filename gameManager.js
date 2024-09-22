@@ -200,7 +200,7 @@ export const gameManager = {
 
 function update() {
     if (gameState === 'playing' || gameState === 'betweenRounds') {
-        ship.update(keys, gameState, skillAssignments, enemies, bullets, missiles, aoeEffects, killCount, gameManager);
+        ship.update(keys, gameState, skillAssignments, enemies, bullets, missiles, aoeEffects, killCountValue, gameManager);
 
         // Update bullets
         for (let i = bullets.length - 1; i >= 0; i--) {
@@ -382,7 +382,6 @@ function update() {
             }
         }
     }
-}
 
 /* --- Drawing Functions --- */
 
@@ -664,10 +663,6 @@ function createRandomEnemy() {
     return new EnemyClass(x, y, ship.maxSpeed);
 }
 
-function gameOverHandler() {
-    gameOver();
-}
-
 function restartGame() {
     if (gameOverTimer) {
         clearTimeout(gameOverTimer);
@@ -752,3 +747,4 @@ document.getElementById('skillMenu').style.display = 'none';
 
 // Start the game loop
 gameLoop();
+}

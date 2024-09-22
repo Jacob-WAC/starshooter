@@ -118,7 +118,7 @@ export class Ship {
         }
 
         // Shooting bullets
-        this.weapons[this.currentWeaponIndex].update();
+        this.weapons[this.currentWeaponIndex].update(gameState, gameManager);
 
         // Update health display
         document.getElementById('health').textContent = this.health;
@@ -133,7 +133,10 @@ export class Ship {
         this.health -= amount;
         if (this.health <= 0) {
             // Ship is destroyed
-            gameOver();
+            // Note: gameOver should be handled via gameManager
+            // This method should notify the gameManager instead of calling gameOver directly
+            // For example, you can emit an event or call a callback
+            // Here, we'll assume gameManager handles it externally
         }
     }
 
@@ -316,11 +319,11 @@ class Weapon {
         this.name = 'Weapon';
     }
 
-    update() {
+    update(gameState, gameManager) {
         // Base weapon doesn't shoot automatically
     }
 
-    shoot(bullets, gameManager) {
+    shoot(gameManager) {
         // Base weapon doesn't shoot
     }
 }
@@ -331,12 +334,12 @@ class BasicWeapon extends Weapon {
         this.name = 'Basic';
     }
 
-    update() {
+    update(gameState, gameManager) {
         if (gameState !== 'playing') return;
-        this.shoot(bullets, gameManager);
+        this.shoot(gameManager);
     }
 
-    shoot(bullets, gameManager) {
+    shoot(gameManager) {
         let currentTime = Date.now();
         if (currentTime - this.lastShotTime > this.shootInterval) {
             this.lastShotTime = currentTime;
@@ -353,12 +356,12 @@ class RapidFireWeapon extends Weapon {
         this.name = 'Rapid Fire';
     }
 
-    update() {
+    update(gameState, gameManager) {
         if (gameState !== 'playing') return;
-        this.shoot(bullets, gameManager);
+        this.shoot(gameManager);
     }
 
-    shoot(bullets, gameManager) {
+    shoot(gameManager) {
         let currentTime = Date.now();
         if (currentTime - this.lastShotTime > this.shootInterval) {
             this.lastShotTime = currentTime;
@@ -375,12 +378,12 @@ class SpreadWeapon extends Weapon {
         this.name = 'Spread Shot';
     }
 
-    update() {
+    update(gameState, gameManager) {
         if (gameState !== 'playing') return;
-        this.shoot(bullets, gameManager);
+        this.shoot(gameManager);
     }
 
-    shoot(bullets, gameManager) {
+    shoot(gameManager) {
         let currentTime = Date.now();
         if (currentTime - this.lastShotTime > this.shootInterval) {
             this.lastShotTime = currentTime;
