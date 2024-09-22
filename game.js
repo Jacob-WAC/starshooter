@@ -532,12 +532,15 @@ function update() {
 
         if (gameState === 'betweenRounds' && countdownCurrentTime > 0 && enemies.length === 0) {
             let now = Date.now();
+
+            
             console.log(countdownCurrentTime,"|",countdownTimer,"this is before the reset")
-            if (!countdownTimer) {
+            if (!countdownTimer) { 
                 countdownTimer = now;
             }
             if (now - countdownTimer >= 1000) {
                 countdownCurrentTime--;
+                
                 document.getElementById('countdown').textContent = countdownCurrentTime;
                 countdownTimer = now;
             }
