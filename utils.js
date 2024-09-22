@@ -63,7 +63,7 @@ export function shootBullet(ship, bulletsArray) {
 export function shootSpreadShot(ship, bulletsArray) {
     // Angles for the spread shot
     const angles = [ship.angle - 0.1, ship.angle, ship.angle + 0.1];
-
+ 
     angles.forEach(angle => {
         const shipSpeedForward = ship.vx * Math.cos(angle) + ship.vy * Math.sin(angle);
         const bulletSpeed = 10;
@@ -81,4 +81,4 @@ export function shootSpreadShot(ship, bulletsArray) {
             maxDistance: 500
         });
     });
-}
+}    
