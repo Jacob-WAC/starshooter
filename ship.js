@@ -246,6 +246,7 @@ export class Ship {
         let nearestEnemy = null;
         let minDistance = Infinity;
         enemies.forEach(enemy => {
+            console.log("finding enemy to blow up")
             const distance = gameManager.getDistance(this.x, this.y, enemy.x, enemy.y);
             if (distance < minDistance) {
                 minDistance = distance;
