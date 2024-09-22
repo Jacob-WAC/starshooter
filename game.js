@@ -540,12 +540,12 @@ function update() {
             }
             if (now - countdownTimer >= 1000) {
                 countdownCurrentTime--;
-                
+
                 document.getElementById('countdown').textContent = countdownCurrentTime;
                 countdownTimer = now;
             }
         } else if (countdownCurrentTime === 0) {
-            
+            countdownCurrentTime = null
             document.getElementById('countdown').style.display = 'none';
             gameState = 'playing';
             roundNumber++;
