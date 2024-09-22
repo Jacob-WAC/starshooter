@@ -3,7 +3,7 @@ import { Ship } from './ship.js';
 import { Enemy, FastEnemy, TankEnemy, createRandomEnemy, enemies } from './enemies.js';
 import { UI } from './ui.js';
 import { getDistance, pseudoRandom } from './utils.js';
-
+import './constants.js';
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -73,12 +73,7 @@ function setGameState(state) {
     gameState = state;
 }
 
-/* --- Game Entities --- */
 
-const bullets = [];
-const missiles = [];
-const explosions = [];
-const aoeEffects = []; // For visualizing AoE attacks
 
 /* --- Game Variables --- */
 
@@ -553,26 +548,7 @@ function update() {
         }
     }
 
-    /* --- Utility Functions --- */
-
-    function createExplosion(x, y) {
-        const particles = [];
-        for (let i = 0; i < 20; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 2 + 1;
-            particles.push({
-                x: x,
-                y: y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                lifetime: 30
-            });
-        }
-        explosions.push({
-            particles: particles,
-            lifetime: 30
-        });
-    }
+    
 
     /* --- Game State Functions --- */
 
