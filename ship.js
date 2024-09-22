@@ -158,6 +158,7 @@ export class Ship {
                 this.activateSkill(skillAssignments[2], enemies, missiles, aoeEffects, killCount, gameManager);
             }
         }
+        console.log("click da button lunch da missle")
     }
 
     activateSkill(skillName, enemies, missiles, aoeEffects, killCount, gameManager) {
