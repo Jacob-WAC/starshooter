@@ -65,7 +65,20 @@ canvas {
     display: none; /* Initially hidden */
 }
 
-#startScreen, #gameOverScreen {
+
+#startScreen {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    font-size: 24px;
+    text-align: center;
+    padding-top: 100px;
+    display: block; /* Initially hidden; shown based on game state */
+}
+
+#gameOverScreen {
     top: 0;
     left: 0;
     width: 100%;
