@@ -886,7 +886,7 @@ function initGame() {
     missiles.length = 0;
     explosions.length = 0;
     aoeEffects.length = 0;
-
+    missileExplosionRadius = 100;
     initEnemies();
 }
 
