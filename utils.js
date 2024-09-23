@@ -13,7 +13,7 @@ export function createExplosion(x, y) {
             lifetime: 30
         });
     } 
-    
+
     explosions.push({
         particles: particles,
         lifetime: 30
@@ -23,6 +23,7 @@ export function createExplosion(x, y) {
 export function getDistance(x1, y1, x2, y2) {
     let dx = x1 - x2;
     let dy = y1 - y2;
+    
     return Math.sqrt(dx * dx + dy * dy);
 }
 
