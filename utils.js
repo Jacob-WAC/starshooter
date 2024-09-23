@@ -12,7 +12,8 @@ export function createExplosion(x, y) {
             vy: Math.sin(angle) * speed,
             lifetime: 30
         });
-    }
+    } 
+    
     explosions.push({
         particles: particles,
         lifetime: 30
