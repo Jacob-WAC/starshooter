@@ -1,7 +1,13 @@
-// Game Variables and Initialization
+// game.js
+// Main game logic and state management.
+
+// Imports from external modules
+import { initializeControls } from './controls.js'; // Import controls module.
+import { createExplosion, getDistance } from './utils.js'; // Import utility functions.
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const missileExplosionRadius = 100;
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -10,40 +16,8 @@ window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 const camera = { x: 0, y: 0 };
-const keys = {};
-window.addEventListener('keydown', function(e) {
-    keys[e.key.toLowerCase()] = true;
 
-    if (e.key === ' ' || e.code === 'Space') {
-        if (gameState === 'start') {
-            startGame();
-        } else if (gameState === 'gameover') {
-            restartGame();
-        }
-    }
-
-    if (e.key.toLowerCase() === 't') {
-        toggleSkillMenu();
-    }
-
-    if (e.key === 'Tab') {
-        e.preventDefault();
-    }
-
-    if (gameState === 'playing') {
-        ship.handleInput(e.key.toLowerCase(), true);
-    }
-});
-
-window.addEventListener('keyup', function(e) {
-    keys[e.key.toLowerCase()] = false;
-
-    if (gameState === 'playing') {
-        ship.handleInput(e.key.toLowerCase(), false);
-    }
-});
-
-// Game State Management
+// Game state variables
 let gameState = 'start';
 let gameOverTimer = null;
 let countdownTimer = null;
@@ -70,6 +44,7 @@ let skillAssignments = ['Missile Attack', 'Dash', 'Shield'];
 // Class Definitions
 class Ship {
     constructor() {
+        // Initialize ship properties
         this.x = 0;
         this.y = 0;
         this.vx = 0;
@@ -105,6 +80,8 @@ class Ship {
     }
 
     update() {
+        // Handles ship controls, velocity adjustments, cooldowns, and weapon updates.
+        // Logic for movement and handling input has been moved to controls.js for clarity and expandability.
         if (keys['a'] || keys['arrowleft']) {
             this.angle -= this.rotationSpeed;
         }
@@ -190,6 +167,7 @@ class Ship {
     }
 
     handleInput(key, isKeyDown) {
+        // Handles key inputs specifically assigned to the ship, like switching weapons or activating skills.
         if (key === 'tab' && isKeyDown) {
             this.switchWeapon();
         }
@@ -206,6 +184,7 @@ class Ship {
     }
 
     activateSkill(skillName) {
+        // Activates the specified skill assigned to the ship.
         switch (skillName) {
             case 'Missile Attack':
                 this.launchMissile();
@@ -348,6 +327,7 @@ class Ship {
     }
 }
 
+// Define additional classes (Weapon, BasicWeapon, RapidFireWeapon, SpreadWeapon, Enemy, etc.)
 class Weapon {
     constructor(ship) {
         this.ship = ship;
@@ -423,7 +403,82 @@ class SpreadWeapon extends Weapon {
     }
 }
 
+class Enemy {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = 10;
+        this.speed = ship.maxSpeed * 0.75;
+        this.health = 1;
+        this.type = 'Basic';
+    }
+
+    update() {
+        let dx = ship.x - this.x;
+        let dy = ship.y - this.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0) {
+            dx /= dist;
+            dy /= dist;
+        }
+        this.x += dx * this.speed;
+        this.y += dy * this.speed;
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x - camera.x, this.y - camera.y);
+        ctx.fillStyle = 'green';
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+class FastEnemy extends Enemy {
+    constructor(x, y) {
+        super(x, y);
+        this.speed = ship.maxSpeed * 1.2;
+        this.radius = 8;
+        this.type = 'Fast';
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x - camera.x, this.y - camera.y);
+        ctx.fillStyle = 'blue';
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+class TankEnemy extends Enemy {
+    constructor(x, y) {
+        super(x, y);
+        this.speed = ship.maxSpeed * 0.5;
+        this.radius = 15;
+        this.health = 3;
+        this.type = 'Tank';
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x - camera.x, this.y - camera.y);
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
 const ship = new Ship();
+
+// Initialize the input controls module, linking it with relevant game state and functions.
+initializeControls(ship, gameState, startGame, restartGame, toggleSkillMenu);
 
 function update() {
     if (gameState === 'playing' || gameState === 'betweenRounds') {
@@ -530,29 +585,22 @@ function update() {
             }
         });
 
-        if (gameState === 'betweenRounds' && countdownCurrentTime > 0 && enemies.length === 0) {
+        if (gameState === 'betweenRounds' && countdownCurrentTime > 0) {
             let now = Date.now();
-
-            
-            console.log(countdownCurrentTime,"|",countdownTimer,"this is before the reset")
-            if (!countdownTimer) { 
+            if (!countdownTimer) {
                 countdownTimer = now;
             }
             if (now - countdownTimer >= 1000) {
                 countdownCurrentTime--;
-
                 document.getElementById('countdown').textContent = countdownCurrentTime;
                 countdownTimer = now;
             }
-        } else if (countdownCurrentTime === 0 && gameState === 'betweenRounds') {
-            countdownCurrentTime = null
+        } else if (countdownCurrentTime === 0) {
             document.getElementById('countdown').style.display = 'none';
             gameState = 'playing';
             roundNumber++;
             initEnemies();
-            console.log(countdownCurrentTime,"|",countdownTimer,"this is after the reset",gameState)
         }
-        
     }
 }
 
@@ -594,78 +642,6 @@ function shootSpreadShot(ship) {
             maxDistance: 500
         });
     });
-}
-
-class Enemy {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.radius = 10;
-        this.speed = ship.maxSpeed * 0.75;
-        this.health = 1;
-        this.type = 'Basic';
-    }
-
-    update() {
-        let dx = ship.x - this.x;
-        let dy = ship.y - this.y;
-        let dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 0) {
-            dx /= dist;
-            dy /= dist;
-        }
-        this.x += dx * this.speed;
-        this.y += dy * this.speed;
-    }
-
-    draw() {
-        ctx.save();
-        ctx.translate(this.x - camera.x, this.y - camera.y);
-        ctx.fillStyle = 'green';
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-}
-
-class FastEnemy extends Enemy {
-    constructor(x, y) {
-        super(x, y);
-        this.speed = ship.maxSpeed * 1.2;
-        this.radius = 8;
-        this.type = 'Fast';
-    }
-
-    draw() {
-        ctx.save();
-        ctx.translate(this.x - camera.x, this.y - camera.y);
-        ctx.fillStyle = 'blue';
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-}
-
-class TankEnemy extends Enemy {
-    constructor(x, y) {
-        super(x, y);
-        this.speed = ship.maxSpeed * 0.5;
-        this.radius = 15;
-        this.health = 3;
-        this.type = 'Tank';
-    }
-
-    draw() {
-        ctx.save();
-        ctx.translate(this.x - camera.x, this.y - camera.y);
-        ctx.fillStyle = 'red';
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
 }
 
 function drawPlayer() {
@@ -871,72 +847,6 @@ function startGame() {
     initGame();
 }
 
-function initGame() {
-    ship.x = 0;
-    ship.y = 0;
-    ship.vx = 0;
-    ship.vy = 0;
-    ship.angle = 0;
-    ship.thrusterIntensity = 0;
-    ship.health = ship.maxHealth;
-    ship.shieldActive = false;
-    ship.shieldCooldown = 0;
-    ship.dashCooldown = 0;
-    ship.aoeCooldown = 0;
-
-    roundNumber = 1;
-    killCount = 0;
-    document.getElementById('killCount').textContent = killCount;
-    document.getElementById('roundNumber').textContent = roundNumber;
-
-    bullets.length = 0;
-    missiles.length = 0;
-    explosions.length = 0;
-    aoeEffects.length = 0;
-    
-    initEnemies();
-}
-
-function initEnemies() {
-    enemies = [];
-    const numEnemies = 5 + (roundNumber - 1) * 2;
-    for (let i = 0; i < numEnemies; i++) {
-        enemies.push(createRandomEnemy());
-    }
-    document.getElementById('roundNumber').textContent = roundNumber;
-}
-
-function createRandomEnemy() {
-    let x, y;
-    const minDistance = 500;
-    do {
-        x = ship.x + (Math.random() - 0.5) * 2000;
-        y = ship.y + (Math.random() - 0.5) * 2000;
-    } while (getDistance(ship.x, ship.y, x, y) < minDistance);
-
-    const enemyTypes = [Enemy, FastEnemy, TankEnemy];
-    const EnemyClass = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-    return new EnemyClass(x, y);
-}
-
-function startBetweenRounds() {
-    gameState = 'betweenRounds';
-    countdownCurrentTime = countdownTime;
-    document.getElementById('countdown').style.display = 'block';
-    document.getElementById('countdown').textContent = countdownCurrentTime;
-    countdownTimer = null;
-}
-
-function gameOver() {
-    gameState = 'gameover';
-    deathCount++;
-    document.getElementById('deathCount').textContent = deathCount;
-    document.getElementById('gameOverScreen').style.display = 'block';
-    gameOverTimer = setTimeout(() => {
-        restartGame();
-    }, 5000);
-}
-
 function restartGame() {
     if (gameOverTimer) {
         clearTimeout(gameOverTimer);
@@ -1003,6 +913,62 @@ document.getElementById('saveSkillsButton').addEventListener('click', () => {
     closeSkillMenu();
 });
 
+function initGame() {
+    ship.x = 0;
+    ship.y = 0;
+    ship.vx = 0;
+    ship.vy = 0;
+    ship.angle = 0;
+    ship.thrusterIntensity = 0;
+    ship.health = ship.maxHealth;
+    ship.shieldActive = false;
+    ship.shieldCooldown = 0;
+    ship.dashCooldown = 0;
+    ship.aoeCooldown = 0;
+
+    roundNumber = 1;
+    killCount = 0;
+    document.getElementById('killCount').textContent = killCount;
+    document.getElementById('roundNumber').textContent = roundNumber;
+
+    bullets.length = 0;
+    missiles.length = 0;
+    explosions.length = 0;
+    aoeEffects.length = 0;
+
+    initEnemies();
+}
+
+function initEnemies() {
+    enemies = [];
+    const numEnemies = 5 + (roundNumber - 1) * 2;
+    for (let i = 0; i < numEnemies; i++) {
+        enemies.push(createRandomEnemy());
+    }
+    document.getElementById('roundNumber').textContent = roundNumber;
+}
+
+function createRandomEnemy() {
+    let x, y;
+    const minDistance = 500;
+    do {
+        x = ship.x + (Math.random() - 0.5) * 2000;
+        y = ship.y + (Math.random() - 0.5) * 2000;
+    } while (getDistance(ship.x, ship.y, x, y) < minDistance);
+
+    const enemyTypes = [Enemy, FastEnemy, TankEnemy];
+    const EnemyClass = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+    return new EnemyClass(x, y);
+}
+
+function startBetweenRounds() {
+    gameState = 'betweenRounds';
+    countdownCurrentTime = countdownTime;
+    document.getElementById('countdown').style.display = 'block';
+    document.getElementById('countdown').textContent = countdownCurrentTime;
+    countdownTimer = null;
+}
+
 function gameLoop() {
     if (gameState !== 'paused') {
         update();
@@ -1011,6 +977,8 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+// Initialize skill menu display
 document.getElementById('skillMenu').style.display = 'none';
 
+// Start the game loop
 gameLoop();
